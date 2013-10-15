@@ -1,9 +1,6 @@
 (ns raycaster.core
-  (:user quil.core)
-  (:import [javax.swing JFrame]))
+  (:use quil.core))
 
-(def window-width 480)
-(def window-height 480)
 
 (def world-map [
   [1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1]
@@ -32,6 +29,14 @@
   [1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1]
 ])
 
+(def map-size-x (count (get world-map 0)))
+(def map-size-y (count world-map))
+
+(def tile-size 20)
+
+(def window-width (* map-size-x tile-size))
+(def window-height (* map-size-y tile-size))
+
 
 (def player {:pos [22 12]         ; x and y start position
              :dir [-1 0]          ; initial direction vector
@@ -55,8 +60,6 @@
                      (+ 1)
                      (Math/sqrt)))]
     [(delta y x) (delta x y)]))
-
-; (get-deltas 1.0 0.1)
 
 
 (defn camera-x
@@ -90,66 +93,34 @@
         [map-pos axis]))))
 
 
-;(defn get-buffer []
-;  (.getBufferStrategy
-;    (doto (new JFrame "Clojure")
-;      (.setVisible true)
-;      (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
-;      (.setSize (java.awt.Dimension. window-width window-height))
-;      (.createBufferStrategy 2))))  ; Double buffering
-
-
-(defn draw [buffer]
-  (let [graphics (.getDrawGraphics buffer)
-        size-x (count (first world-map))
-        size-y (count world-map)
-        tile-size-x (/ window-width size-x)
-        tile-size-y (/ window-width size-y)]
-
-    ; Clear background
-    (.setColor graphics java.awt.Color/BLACK)
-    (.fillRect graphics 0 0 window-width window-height)
-
-    ; Draws the 2d grid
-    (.setColor graphics java.awt.Color/WHITE)
-    (doseq [x (range size-x)
-            y (range size-y)]
-
-      (when (= (get world-map (get world-map y) x) 1)
-            (.fillRect graphics (* x size-x) (* y size-y) tile-size-x tile-size-y))
-
-      (println (* x size-x) (* y size-y))
-      (.drawRect graphics (* x size-x) (* y size-y) tile-size-x tile-size-y))
-
-    ;(.fillOval graphics 200 200 50 50)
-
-    ; It is best to dispose() a Graphics object when done with it.
-    (.dispose graphics))
-
-  ; Shows the contents of the backbuffer on the screen.
-  (.show buffer))
-
-
 (defn setup []
   (smooth)                          ;;Turn on anti-aliasing
   (frame-rate 1)                    ;;Set framerate to 1 FPS
-  (background 200))                 ;;Set the background colour to
+  (background 0))                 ;;Set the background colour to
                                     ;;  a nice shade of grey.
 (defn draw []
-  (stroke (random 255))             ;;Set the stroke colour to a random grey
-  (stroke-weight (random 10))       ;;Set the stroke thickness randomly
-  (fill (random 255))               ;;Set the fill colour to a random grey
+  (background 0)
 
-  (let [diam (random 100)           ;;Set the diameter to a value between 0 and 100
-        x    (random (width))       ;;Set the x coord randomly within the sketch
-        y    (random (height))]     ;;Set the y coord randomly within the sketch
-    (ellipse x y diam diam)))       ;;Draw a circle at x y with the correct diameter
+  (stroke 255)
+  (stroke-weight 1)
 
-(defsketch example                  ;;Define a new sketch named example
-  :title "Oh so many grey circles"  ;;Set the title of the sketch
-  :setup setup                      ;;Specify the setup fn
-  :draw draw                        ;;Specify the draw fn
-  :size [323 200])
+  (doseq [x (range map-size-x)
+          y (range map-size-y)]
+    (let [tile (get (get world-map y) x)]
+      (cond
+       (= tile 0) (fill 0 0 0)
+       (= tile 1) (fill 255 0 0)
+       (= tile 2) (fill 0 255 0)
+       (= tile 3) (fill 0 0 255)
+       (= tile 4) (fill 255 255 0)
+       (= tile 5) (fill 0 255 255))
+      (rect (* x tile-size) (* y tile-size) tile-size tile-size))))
+
+(defsketch example
+  :title "Raycaster"
+  :setup setup
+  :draw draw
+  :size [window-width window-height])
 
 ;(defn -main []
 ;  (draw (get-buffer)))
