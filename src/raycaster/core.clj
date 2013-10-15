@@ -38,8 +38,8 @@
 (def window-height (* map-size-y tile-size))
 
 
-(def player {:pos [22 12]         ; x and y start position
-             :dir [-1 0]          ; initial direction vector
+(def player {:pos [22.0 12.0]         ; x and y start position
+             :dir [-1.0 0.0]           ; initial direction vector
              :plane [0.0 0.66]})  ; the 2d raycaster version of camera plane
 
 
@@ -56,9 +56,13 @@
   ; http://gamedev.stackexchange.com/questions/45013/raycasting-tutorial-vector-math-question
   [x y]
   (letfn [(delta [a b]
-                 (-> (/ (* a a) (* b b))
-                     (+ 1)
-                     (Math/sqrt)))]
+                 (try
+                   (-> (/ (* a a) (* b b))
+                       (+ 1)
+                       (Math/sqrt))
+                   (catch Exception e
+                     ; Division by zero, just return a large number
+                     (Double/MAX_VALUE))))]
     [(delta y x) (delta x y)]))
 
 
@@ -70,7 +74,7 @@
   ; vector. This has to be done both for the x and y coordinate of the vector (since adding two vectors is
   ; adding their x-coordinates, and adding their y-coordinates).
   [x]
-  (-> x (/ window-width) (* 2) (- 1)))
+  (-> x (/ window-width) (* 2.0) (- 1.0)))
 
 
 (defn shoot-ray [x]
@@ -94,33 +98,69 @@
 
 
 (defn setup []
-  (smooth)                          ;;Turn on anti-aliasing
-  (frame-rate 1)                    ;;Set framerate to 1 FPS
-  (background 0))                 ;;Set the background colour to
-                                    ;;  a nice shade of grey.
+  (smooth)
+  (frame-rate 1)
+  (background 0))
+
+(defn to-screen-coord [coord]
+  (* coord tile-size))
+
+
 (defn draw []
-  (background 0)
+  (let [[player-pos-x player-pos-y] (:pos player)
+        [player-dir-x player-dir-y] (:dir player)
+        [delta-x delta-y] (get-deltas player-dir-x player-dir-y)
+        [map-x map-y] (map int (:pos player))
+        side-dist-x (if (< 0 player-pos-x)
+                        (* delta-x (- player-pos-x map-x))
+                        (* delta-x (- (inc map-x) player-pos-x)))
+        side-dist-y (if (< 0 player-pos-y)
+                        (* delta-y (- player-pos-y map-y))
+                        (* delta-y (- (inc map-y) player-pos-y)))
+        ]
+    (background 0)
 
-  (stroke 255)
-  (stroke-weight 1)
+    ; Draws the tiles
+    (stroke 255)
+    (stroke-weight 1)
+    (doseq [x (range map-size-x)
+            y (range map-size-y)]
+      (let [tile (get (get world-map y) x)]
+        (cond
+         (= tile 0) (fill 0 0 0)
+         (= tile 1) (fill 255 0 0)
+         (= tile 2) (fill 0 255 0)
+         (= tile 3) (fill 0 0 255)
+         (= tile 4) (fill 255 255 0)
+         (= tile 5) (fill 0 255 255))
+        (rect (* x tile-size) (* y tile-size) tile-size tile-size)))
 
-  (doseq [x (range map-size-x)
-          y (range map-size-y)]
-    (let [tile (get (get world-map y) x)]
-      (cond
-       (= tile 0) (fill 0 0 0)
-       (= tile 1) (fill 255 0 0)
-       (= tile 2) (fill 0 255 0)
-       (= tile 3) (fill 0 0 255)
-       (= tile 4) (fill 255 255 0)
-       (= tile 5) (fill 0 255 255))
-      (rect (* x tile-size) (* y tile-size) tile-size tile-size))))
+    ; Draws the player
+    ;(fill 0 255 0)
+    ;(stroke-weight 0)
+    ;(let [[player-dir-x player-dir-y] (:dir player)]
+    ;  (triangle player-pos-x player-pos-y
+    ;            (+ player-pos-x (* player-dir-x 5) 5) (- player-pos-y (* player-dir-y 5))
+    ;            (+ player-pos-x (* player-dir-x 5) -5) (- player-pos-y (* player-dir-y 5))
+    ;  ))
+
+    (stroke 255 100 0)
+    (stroke-weight 1)
+    (let [coords (map to-screen-coord [player-pos-x player-pos-y side-dist-x side-dist-y])]
+      (println coords)
+      (apply line coords))
+
+    ;(let [
+    ;      [delta-x delta-y] (get-deltas ray-dir-x ray-dir-y)
+    ;      side-dist-x (if (< 0 ray-dir-x) (* delta-x (- )))]
+    ;  (line player-pos-x player-pos-y
+    ;        (+ player-pos-x (to-screen-coord delta-x))
+    ;        (+ player-pos-y (to-screen-coord delta-y))))
+    ))
+
 
 (defsketch example
   :title "Raycaster"
   :setup setup
   :draw draw
   :size [window-width window-height])
-
-;(defn -main []
-;  (draw (get-buffer)))
